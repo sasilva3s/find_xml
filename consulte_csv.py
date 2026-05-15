@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
 from sqlite_update import *
 from fix_apply import *
+from xml_utils import *
 
 def ler_arquivo_csv(caminho_arquivo):
     dados = []
@@ -20,16 +21,16 @@ def ler_arquivo_csv(caminho_arquivo):
     return dados
 
 def get_system_version():
-    if is_that_system_windows() and os.path.exists("C:\mwpos"):
-        return "C:\mwpos"
-    elif is_that_system_windows() and os.path.exists("C:\edeployPOS"):
-        return "C:\edeployPOS"
-    elif is_that_system_windows() and os.path.exists("C:\edeploy-pos-structure"):
-        return "C:\edeploy-pos-structure"
+    if is_that_system_windows() and os.path.exists(r"C:\mwpos"):
+        return r"C:\mwpos"
+    elif is_that_system_windows() and os.path.exists(r"C:\edeployPOS"):
+        return r"C:\edeployPOS"
+    elif is_that_system_windows() and os.path.exists(r"C:\edeploy-pos-structure"):
+        return r"C:\edeploy-pos-structure"
     elif not is_that_system_windows() and os.path.exists("/home/administrador/edeployPOS"):
         return "/home/administrador/edeployPOS"
     else:
-        return r"/home/administrador/mwpos_server"
+        return "/home/administrador/mwpos_server"
 
 def is_that_system_windows():
     return platform.system().lower() == "windows"
@@ -158,7 +159,7 @@ def time_direction(venda, order_id, file_connect, nota, posid):
             find_fiscal_id(nota)
             logging.info("Venda com o status {}, {}, {} : APED-19705 - Aplicado fix".format(no_ident_status, order_id, type_venda))
         elif restart_compont is not None:
-            main()
+            logging.warning(f"Venda {order_id} requer restart do componente remoteorder")
 
     else:
         if state_id_paid is None and state_id_void is None:

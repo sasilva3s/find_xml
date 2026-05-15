@@ -1,2 +1,2 @@
-C:\edeploypos\python\python.exe main.py update
+C:\edeploypos\python3\python.exe main.py update
 pause

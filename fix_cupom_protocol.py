@@ -7,7 +7,7 @@ import time
 import base64
 
 from datetime import datetime, timedelta
-from xml.etree import cElementTree as ET
+from xml.etree import ElementTree as ET
 
 
 class FixingCstatCupons:
@@ -39,7 +39,6 @@ class FixingCstatCupons:
         sys.path.append(os.path.join(self.app_bin, 'edpcommon.pypkg'))
         sys.path.append(os.path.join(self.app_path, pump_path))
 
-
         os.environ["BINPATH"] = os.path.join(self.app_path, self.app_bin)
         os.environ["HVPORT"] = "14000"
         os.environ["HVIP"] = "127.0.0.1"
@@ -47,23 +46,33 @@ class FixingCstatCupons:
         os.environ["HVPID"] = "-1"
 
         os.chdir(os.environ["BINPATH"])
-        from msgbus import MBEasyContext, FM_PARAM, TK_SLCTRL_OMGR_ORDERPICT, TK_SYS_ACK, TK_EVT_EVENT, TK_SLCTRL_OMGR_ORDERPICT
-        from old_helper import BaseRepository, remove_xml_namespace
-        from bustoken import TK_FISCALWRAPPER_SITUATION, TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS
-        import cfgtools
+        
+        try:
+            from msgbus import MBEasyContext, FM_PARAM, TK_SLCTRL_OMGR_ORDERPICT, TK_SYS_ACK, TK_EVT_EVENT
+            from old_helper import BaseRepository, remove_xml_namespace
+            from bustoken import TK_FISCALWRAPPER_SITUATION, TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS
+            import cfgtools
 
-        self.mbcontext = MBEasyContext("STANDALONE_SCRIPT")
-        self.base_repository = BaseRepository
-        self.FM_PARAM = FM_PARAM
-        self.TK_EVT_EVENT = TK_EVT_EVENT
-        self.TK_SLCTRL_OMGR_ORDERPICT = TK_SLCTRL_OMGR_ORDERPICT
-        self.TK_FISCALWRAPPER_SITUATION = TK_FISCALWRAPPER_SITUATION
-        self.TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS = TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS
-        self.TK_SYS_ACK = TK_SYS_ACK
-        self.cfgtools = cfgtools
-        self.remove_xml_namespace = remove_xml_namespace
-
-        #print("Proccess is running, view progress see log file on: {}".format(self.log_filename))
+            self.mbcontext = MBEasyContext("STANDALONE_SCRIPT")
+            self.base_repository = BaseRepository
+            self.FM_PARAM = FM_PARAM
+            self.TK_EVT_EVENT = TK_EVT_EVENT
+            self.TK_SLCTRL_OMGR_ORDERPICT = TK_SLCTRL_OMGR_ORDERPICT
+            self.TK_FISCALWRAPPER_SITUATION = TK_FISCALWRAPPER_SITUATION
+            self.TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS = TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS
+            self.TK_SYS_ACK = TK_SYS_ACK
+            self.cfgtools = cfgtools
+            self.remove_xml_namespace = remove_xml_namespace
+            
+            self.logger.info("Conexão com msgbus estabelecida com sucesso")
+        except ImportError as e:
+            error_msg = (
+                f"Erro ao importar módulos de integração: {e}. "
+                "Verifique se os arquivos .pypkg estão presentes em {os.environ['BINPATH']}. "
+                "As funções process_resign() e process_unused_orders() não estarão disponíveis."
+            )
+            self.logger.warning(error_msg)
+            self.mbcontext = None
 
     def find_key_pattern(self, orderid):
         fiscal_component_directory = os.path.join(self.app_path, "data/server/bundles/fiscalwrapper")
@@ -226,6 +235,10 @@ class FixingCstatCupons:
                 conn.close()
 
     def process_resign(self):
+        if self.mbcontext is None:
+            self.logger.warning("process_resign() skipped: msgbus não está disponível")
+            return
+        
         self.orders_not_send = self.not_send_orders()
 
         if self.orders_not_send:
@@ -243,24 +256,21 @@ class FixingCstatCupons:
             min_date = min(self.orders_to_verify_protocol)
             max_date = max(self.orders_to_verify_protocol)
             self.running_nfe_situation(min_date, max_date)
-            #self.logger.info("Running check situation sefaz. See process on fiscalwrapper.log")
-
 
         if not len(self.orders_to_fix) > 0:
-            #
-            #self.logger.info("Not found any order paid pending to sent SEFAZ")
             return
 
         self.force_orders()
         self.cupons_to_fix = self.get_cupons()
-        #self.logger.info("Resign sent NumeroNota to SEFAZ: {} ".format(",".join(self.cupons_to_fix)))
         self.send_fiscalwrapper_event("ReSignXMLs")
         self.send_fiscalwrapper_event("Enabled", token=self.TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS)
         time.sleep(6)
         self.send_fiscalwrapper_event("Disabled", token=self.TK_FISCALWRAPPER_CHANGE_CONTINGENCY_STATUS)
 
     def process_unused_orders(self):
-        self.orders = self.get_orders_unused()
+        if self.mbcontext is None:
+            self.logger.warning("process_unused_orders() skipped: msgbus não está disponível")
+            return
         self.orders_unused = set(self.orders)
         force_disable = None
 

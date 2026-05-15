@@ -7,32 +7,54 @@ import time
 import base64
 import xml.etree.ElementTree as ET
 
-def connect_fiscal_wrapper(caminho, orderid):
-    """
-    Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
 
-    :param caminho: Caminho do banco de dados "fiscal_persistcomp.db"
-    :param orderid: OrderId da venda
+def update_fiscal_data(caminho, orderid, updates_dict):
     """
-    with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
+    Atualiza dados fiscais de forma genérica.
+    
+    Consolida as operações comuns de update em fiscaldata,
+    evitando duplicação de código entre connect_fiscal_wrapper
+    e connect_fiscal_picture.
+    
+    Args:
+        caminho (str): Caminho do banco de dados fiscal_persistcomp.db
+        orderid (int): ID do pedido a atualizar
+        updates_dict (dict): Dicionário com colunas e valores
+                            Ex: {"senttonfce": 0, "senttobkoffice": 0, "orderpicture": 1}
+    """
+    with sqlite3.connect(caminho) as fiscal_connect:
         fiscal_cursor = fiscal_connect.cursor()
-        fiscal_cursor.execute("""update fiscaldata set senttonfce = 0, senttobkoffice = 0 where orderid = {}""".format(orderid))
-        logging.info("Update 'senttonfce' gerado para o orderid -> {}".format(orderid))
+        set_clause = ", ".join([f"{k} = {v}" for k, v in updates_dict.items()])
+        query = f"UPDATE fiscaldata SET {set_clause} WHERE orderid = {orderid}"
+        fiscal_cursor.execute(query)
+        logging.info(f"Update 'senttonfce' gerado para orderid -> {orderid} com valores {updates_dict}")
         fiscal_connect.commit()
 
+
+def connect_fiscal_wrapper(caminho, orderid):
+    """
+    Reseta status fiscal para reenvio NFCE (wrapper).
+    
+    Atualiza senttonfce e senttobkoffice para 0.
+    
+    Args:
+        caminho (str): Caminho do banco fiscal_persistcomp.db
+        orderid (int): ID do pedido
+    """
+    update_fiscal_data(caminho, orderid, {"senttonfce": 0, "senttobkoffice": 0})
 
 
 def connect_fiscal_picture(caminho, orderid):
     """
-    Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
-
-    :param caminho: Caminho do banco de dados "fiscal_persistcomp.db"
-    :param orderid: OrderId da venda
+    Reseta status fiscal e marca como picture para reprocessamento.
+    
+    Atualiza senttonfce, senttobkoffice para 0 e orderpicture para 1.
+    
+    Args:
+        caminho (str): Caminho do banco fiscal_persistcomp.db
+        orderid (int): ID do pedido
     """
-    with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
-        fiscal_cursor = fiscal_connect.cursor()
-        fiscal_cursor.execute("""update fiscaldata set senttonfce = 0, senttobkoffice = 0, orderpicture = 1 where orderid = {}""".format(orderid))
-        fiscal_connect.commit()
+    update_fiscal_data(caminho, orderid, {"senttonfce": 0, "senttobkoffice": 0, "orderpicture": 1})
 
 
 def insert_fiscal_faltante(caminho, posid, OrderId, XMLRequest, NumeroNota, DataNota):
@@ -143,7 +165,7 @@ def updater_OXAP_5832(file_connect, order_id, nota, date, minutos, type_posid):
             ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
             root = ET.fromstring(xml_encoded)
             cstat = root.find(".//nfe:protNFe/nfe:infProt/nfe:cStat", ns)
-            if cstat is not None or cstat == 100:
+            if cstat is not None and cstat.text == "100":
                 logging.info("Cancelada após 30: Order:{}, Nota:{}, Dia:{}, Tempo:{}, Pos:{}, cstat {}".format(order_id, nota, date, minutos, type_posid, cstat.text))
             else:
                 delete_customproperties(file_connect, order_id)
