@@ -17,31 +17,31 @@ logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime
 arquivo_file = "file_csv/bkoffice.csv"
 logging.info("Start Componente")
 
-caminho_databeses = get_system_version()
-if caminho_databeses == "/home/administrador/mwpos_server":
-    acesso_fiscal = r"""{}/data/server/databases/fiscal_persistcomp.db""".format(caminho_databeses)
-    file_store = r"""{}/data/server/bundles/storecfg/loader.cfg""".format(caminho_databeses)
-    localizar_xml = r"{}/bin/".format(caminho_databeses)
-    acesso_orders = r"""{}/data/server/databases/order.db""".format(caminho_databeses)
+caminho_databases = get_system_version()
+if caminho_databases == "/home/administrador/mwpos_server":
+    acesso_fiscal = r"""{}/data/server/databases/fiscal_persistcomp.db""".format(caminho_databases)
+    file_store = r"""{}/data/server/bundles/storecfg/loader.cfg""".format(caminho_databases)
+    localizar_xml = r"{}/bin/".format(caminho_databases)
+    acesso_orders = r"""{}/data/server/databases/order.db""".format(caminho_databases)
     Erro = ["Erros", "Enviados/2025/12/"]
     local_fix = "fix_venda/"
-    local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
-elif caminho_databeses == "C:\edeployPOS":
-    acesso_fiscal = r"""{}\data\server\databases\fiscal_persistcomp.db""".format(caminho_databeses)
-    file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databeses)
-    localizar_xml = r"{}\bin".format(caminho_databeses)
-    acesso_orders = r"""{}\data\server\databases\order.db""".format(caminho_databeses)
+    local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databases)
+elif caminho_databases == "C:\edeployPOS":
+    acesso_fiscal = r"""{}\data\server\databases\fiscal_persistcomp.db""".format(caminho_databases)
+    file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databases)
+    localizar_xml = r"{}\bin".format(caminho_databases)
+    acesso_orders = r"""{}\data\server\databases\order.db""".format(caminho_databases)
     Erro = ["\Erros", r"\Enviados\2026"]
-    acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databeses)
+    acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databases)
     # local_fix = "fix_venda/"
     # local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
-elif caminho_databeses == "C:\edeploy-pos-structure":
-    acesso_fiscal = r"""{}\data\server\databases\fiscal_persistcomp.db""".format(caminho_databeses)
-    file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databeses)
-    localizar_xml = r"{}\bin".format(caminho_databeses)
-    acesso_orders = r"""{}\data\server\databases\order.db""".format(caminho_databeses)
+elif caminho_databases == "C:\edeploy-pos-structure":
+    acesso_fiscal = r"""{}\data\server\databases\fiscal_persistcomp.db""".format(caminho_databases)
+    file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databases)
+    localizar_xml = r"{}\bin".format(caminho_databases)
+    acesso_orders = r"""{}\data\server\databases\order.db""".format(caminho_databases)
     Erro = ["\Erros", r"\Enviados\2026"]
-    acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databeses)
+    acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databases)
     # local_fix = "fix_venda/"
     # local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
 
