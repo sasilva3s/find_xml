@@ -22,16 +22,17 @@ def connect_fiscal_wrapper(caminho, orderid):
 
 
 
-def connect_fiscal_picture(caminho, orderid):
+def update_xml_APED23848(caminho, xmlrequest, orderid):
     """
     Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
 
     :param caminho: Caminho do banco de dados "fiscal_persistcomp.db"
     :param orderid: OrderId da venda
     """
+    print xmlrequest[0]
     with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
         fiscal_cursor = fiscal_connect.cursor()
-        fiscal_cursor.execute("""update fiscaldata set senttonfce = 0, senttobkoffice = 0, orderpicture = 1 where orderid = {}""".format(orderid))
+        fiscal_cursor.execute("""update fiscaldata set senttonfce = 1, xmlrequest = '{}' where orderid = {}""".format(xmlrequest, orderid))
         fiscal_connect.commit()
 
 
@@ -215,3 +216,12 @@ def find_fiscal_id(note_found):
                     logging.info("Fiscal Number {}, identificado no {}, orderid {}".format(coluna[2], file_data, coluna[0]))
                     orders.execute("""update OrderCustomProperties set Value = 1 WHERE orderid = {} and key = 'REMOTE_ORDER_STATUS'; """.format(coluna[0]))
                     connect_id.commit()
+
+def validate_status(path_fiscal, orderid):
+    xml_request = []
+    with sqlite3.connect("{}".format(path_fiscal)) as connect_id:
+        connect = connect_id.cursor()
+        res = connect.execute("""select xmlrequest from fiscaldata where orderid = {}""".format(orderid))
+        for coluna in res:
+            xml_request.append(coluna[0])
+    return xml_request

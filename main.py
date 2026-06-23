@@ -11,12 +11,12 @@ import base64
 from fix_cupom_protocol import *
 
 
-log_filename = 'integracao.log'
+log_filename = 'system_script.log'
 logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 arquivo_file = "file_csv/bkoffice.csv"
 logging.info("Start Componente")
-
+print "start Componente"
 caminho_databases = get_system_version()
 if caminho_databases == "/home/administrador/mwpos_server":
     acesso_fiscal = r"""{}/data/server/databases/fiscal_persistcomp.db""".format(caminho_databases)
@@ -94,7 +94,7 @@ def main():
                             file_orders = "{}{}".format(acesso_orders, xml_file.get("posid"))
                             consult_order = connect_order_state(file_orders, xml_file.get("orderid"))
                             if consult_order:
-                                order_statr = time_direction(consult_order, xml_file.get("orderid"), file_orders, nota.get("numero_nota"), xml_file.get("posid"))
+                                order_statr = time_direction(consult_order, xml_file.get("orderid"), file_orders, nota.get("numero_nota"), xml_file.get("posid"), acesso_fiscal)
                                 if order_statr == 5:
                                     StandAlone(xml_file.get("orderid"))
                                 if order_statr == -1:
@@ -104,7 +104,7 @@ def main():
                                 for file_databases in not_order_picture():
                                     consult_order = connect_order_state(file_databases, xml_file.get("orderid"))
                                     if consult_order:
-                                        order_state = time_direction(consult_order, xml_file.get("orderid"), file_databases, nota.get("numero_nota"), xml_file.get("posid"))
+                                        order_state = time_direction(consult_order, xml_file.get("orderid"), file_databases, nota.get("numero_nota"), xml_file.get("posid"), acesso_fiscal)
                                         if order_state == 5:
                                             insert_db(file_databases, file_orders, xml_file.get("orderid"))
                                             logging.info("Inserido vendas no banco atual {}, {}, {}".format(xml_file.get("orderid"), nota.get("numero_nota"), xml_file.get("posid")))
@@ -115,6 +115,7 @@ def main():
 
 
 not_bin, note_number = main()
+main_fix()
 try:
     if not_bin in (-1, "Identificado_xml"):
         execution = FixingCstatCupons()

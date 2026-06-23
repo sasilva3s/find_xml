@@ -28,7 +28,8 @@ def get_version():
 def restart_component(component):
     if component == "remoteorder":
         component = "remoteorder"
-
+    if component == "fiscalwrapper":
+        component = "fiscalwrapper"
     os.system("{} {} >NUL".format(RESTART_COMMAND, component))
     logging.info("Component restarted: {}".format(component))
     time.sleep(2)

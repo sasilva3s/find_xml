@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
 from sqlite_update import *
 from fix_apply import *
+from decode_base64 import *
 
 def ler_arquivo_csv(caminho_arquivo):
     dados = []
@@ -62,7 +63,7 @@ def file_valor_sentto(file_csv):
 
 
 
-def time_direction(venda, order_id, file_connect, nota, posid):
+def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
     void_time = None
     paid_time = None
     state_id_paid = None
@@ -100,17 +101,24 @@ def time_direction(venda, order_id, file_connect, nota, posid):
         for sale in sale_custom:
             if sale.get("key") == "FISCAL_XML":
                 base = sale.get("value")
-                xml_encoded = base64.b64decode(base)
-                ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
-                root = ET.fromstring(xml_encoded)
-                cstat = root.find(".//nfe:protNFe/nfe:infProt/nfe:cStat", ns)
-                if cstat is not None:
-                    logging.info("Order foi Paid {}, cstat {}, Nota {} Reenviando para o boh ".format(order_id, cstat.text, nota))
-                    return 5
+                decoder = DecodeBase64(base)
+                status = decoder.decode()
+                if status in ("100", "150"):
+                    logging.info("Validar cstat no fiscal_persistcomp".format(order_id, status))
+                    xml_request = validate_status(fiscal, order_id)
+                    decoder_xml = DecodeBase64(xml_request[0])
+                    status_xml = decoder_xml.decode()
+                    if status != status_xml:
+                        logging.info("Order:{}, Nota:{}, Cstat: {} | Fiscal Status_xml:{} Atualizando informações no fiscal".format(order_id, nota, status, status_xml))
+                        update_xml_APED23848(fiscal, base, order_id)
+                        return 5
+                    else:
+                        logging.info("Venda possui o mesmo status entre fiscal/order")
+                        return 5
                 else:
-                    cstat = root.find(".//nfe:infNFe/nfe:ide/nfe:xJust", ns)
-                    logging.info("{}, Order {}, Numero {} Vamos reprocessar sefaz: ".format(cstat.text, order_id, nota))
-                    return -1
+                    logging.info("Order:{}, Nota:{}, Cstat: {}".format(order_id, nota, status))
+                    return
+
     if state_id_void and state_id_paid is None:
         sale_custom = orders_customproperties(file_connect, order_id)
 
@@ -158,7 +166,7 @@ def time_direction(venda, order_id, file_connect, nota, posid):
             find_fiscal_id(nota)
             logging.info("Venda com o status {}, {}, {} : APED-19705 - Aplicado fix".format(no_ident_status, order_id, type_venda))
         elif restart_compont is not None:
-            main()
+            main_fix()
 
     else:
         if state_id_paid is None and state_id_void is None:

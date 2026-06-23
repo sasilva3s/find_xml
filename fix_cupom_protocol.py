@@ -281,9 +281,9 @@ class FixingCstatCupons:
                     inutilization_status = \
                         order_picture.find("CustomOrderProperties/OrderProperty/[@key='ORDER_DISABLED']").get('value')
 
-                    #self.logger.info("Forcing inutilization for orderid: {} numeronota: {} "
-                                     #"stateid: {} current inutilization state: {}"
-                                     #.format(orderid, numeronota, stateid, inutilization_status))
+                    self.logger.info("Forcing inutilization for orderid: {} numeronota: {} "
+                                     "stateid: {} current inutilization state: {}"
+                                     .format(orderid, numeronota, stateid, inutilization_status))
                     self.delete_failed_inutilization(orderid)
                     self.send_fiscalwrapper_event("DisableNfceOrder")
                     time.sleep(5)
@@ -313,7 +313,7 @@ class FixingCstatCupons:
         end_xml = '''<protNFe versao="4.00"><infProt><tpAmb>1</tpAmb><verAplic>PR-v4_4_9</verAplic><chNFe></chNFe><dhRecbto>2021-08-02T16:30:48-03:00</dhRecbto><cStat>204</cStat><xMotivo>Duplicidade de NF-e [nRec:411002421114061]</xMotivo></infProt></protNFe></nfeProc>'''
 
         new_request = base64.b64encode(base_xml + new_xml + end_xml)
-        #self.logger.info("Fixing protocol orderid: {} numero nota: {} with key: {}".format(orderid,numeronota, key))
+        self.logger.info("Fixing protocol orderid: {} numero nota: {} with key: {}".format(orderid,numeronota, key))
         self.update_fiscal_persist(orderid, new_request)
         date = inf_nfe.find(".//dhEmi").text[0:10].replace('-', '')
 
