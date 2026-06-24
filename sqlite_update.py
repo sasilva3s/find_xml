@@ -22,18 +22,24 @@ def connect_fiscal_wrapper(caminho, orderid):
 
 
 
-def update_xml_APED23848(caminho, xmlrequest, orderid):
+def update_xml_APED23848(caminho, xmlrequest, orderid, status_senttonfce):
     """
     Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
 
     :param caminho: Caminho do banco de dados "fiscal_persistcomp.db"
     :param orderid: OrderId da venda
     """
-    print xmlrequest[0]
     with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
-        fiscal_cursor = fiscal_connect.cursor()
-        fiscal_cursor.execute("""update fiscaldata set senttonfce = 1, xmlrequest = '{}' where orderid = {}""".format(xmlrequest, orderid))
-        fiscal_connect.commit()
+        if status_senttonfce != 1:
+            fiscal_cursor = fiscal_connect.cursor()
+            fiscal_cursor.execute("""update fiscaldata set senttonfce = {} where orderid = {}""".format(status_senttonfce, orderid))
+            fiscal_connect.commit()
+        else:
+            fiscal_cursor = fiscal_connect.cursor()
+            fiscal_cursor.execute("""update fiscaldata set senttonfce = {}, xmlrequest = '{}' where orderid = {}""".format(status_senttonfce, xmlrequest, orderid))
+            fiscal_connect.commit()
+
+
 
 
 def insert_fiscal_faltante(caminho, posid, OrderId, XMLRequest, NumeroNota, DataNota):
@@ -118,22 +124,32 @@ def tblservice_conect(caminho, order):
     return db_orders
 
 def updater_aped_20805(file_connect, order_id, nota):
+    xml_request = None
+    xml_canceled = None
     sale_custom = orders_customproperties(file_connect, order_id)
     for sale in sale_custom:
         if sale.get("key") == "FISCAL_XML":
-            base = sale.get("value")
-            xml_encoded = base64.b64decode(base)
-            ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
-            root = ET.fromstring(xml_encoded)
-            cstat = root.find(".//nfe:protNFe/nfe:infProt/nfe:cStat", ns)
-            if cstat is not None:
-                logging.info("Order {} foi cancelada antes de 30 --->, com cstat {} : APED-20805 ".format(order_id, cstat.text))
-            else:
-                cstat = root.find(".//nfe:infNFe/nfe:ide/nfe:xJust", ns)
-                logging.info(
-                    "{}, Order {}, Numero {} foi cancelada antes de 30 , Bug - OXAP-5990".format(cstat.text,
-                                                                                                             order_id,
-                                                                                                             nota))
+            xml_request = sale.get("value")
+        if sale.get("key") == "CANCELED_FISCAL_XML":
+            xml_canceled = sale.get("value")
+    if xml_request is not None and xml_canceled is not None:
+        xml_encoded = base64.b64decode(xml_canceled)
+        ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
+        root = ET.fromstring(xml_encoded)
+        cstat = root.find(".//nfe:cStat", ns)
+        if cstat.text in ('135', '102'):
+            logging.info("Order {} foi cancelada antes de 30 ---> , com cstat {}".format(order_id, cstat.text, nota))
+        else:
+            logging.info(
+                    "Não identificado status de inutilização {}".format(cstat.text))
+    else:
+        logging.info("Necessario analisar / não existe tratamento - Orderid = {}, Nota {}".format(order_id, nota))
+
+
+
+
+
+
 
 def updater_OXAP_5832(file_connect, order_id, nota, date, minutos, type_posid):
     sale_custom_ = orders_customproperties(file_connect, order_id)

@@ -95,6 +95,7 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
             return
         else:
             updater_aped_20805(file_connect, order_id, nota)
+            return
     if state_id_paid and state_id_void is None:
         time.sleep(7)
         sale_custom = orders_customproperties(file_connect, order_id)
@@ -110,13 +111,19 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
                     status_xml = decoder_xml.decode()
                     if status != status_xml:
                         logging.info("Order:{}, Nota:{}, Cstat: {} | Fiscal Status_xml:{} Atualizando informações no fiscal".format(order_id, nota, status, status_xml))
-                        update_xml_APED23848(fiscal, base, order_id)
+                        update_xml_APED23848(fiscal, base, order_id, 1)
                         return 5
                     else:
-                        logging.info("Venda possui o mesmo status entre fiscal/order")
+                        logging.info("Venda possui o mesmo status entre fiscal/order {}, {}".format(order_id, nota))
                         return 5
+
+                if status == "Problemas de conexao com a SEFAZ":
+                    update_xml_APED23848(fiscal, base, order_id, -1)
+                    logging.info("Erro 539 - APED-23848 Orderid:{}, Nota:{}".format(order_id, nota))
+                    return
                 else:
                     logging.info("Order:{}, Nota:{}, Cstat: {}".format(order_id, nota, status))
+                    update_xml_APED23848(fiscal, base, order_id, 0)
                     return
 
     if state_id_void and state_id_paid is None:

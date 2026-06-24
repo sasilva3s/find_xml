@@ -31,7 +31,7 @@ elif caminho_databases == "C:\edeployPOS":
     file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databases)
     localizar_xml = r"{}\bin".format(caminho_databases)
     acesso_orders = r"""{}\data\server\databases\order.db""".format(caminho_databases)
-    Erro = ["\Erros", r"\Enviados\2026"]
+    Erro = ["\Erros", r"\Enviados\2026\06"]
     acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databases)
     # local_fix = "fix_venda/"
     # local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
@@ -97,8 +97,6 @@ def main():
                                 order_statr = time_direction(consult_order, xml_file.get("orderid"), file_orders, nota.get("numero_nota"), xml_file.get("posid"), acesso_fiscal)
                                 if order_statr == 5:
                                     StandAlone(xml_file.get("orderid"))
-                                if order_statr == -1:
-                                    xml_not_localizado = -1
                             else:
                                 logging.info("Vendas não identificadas no order {}, {}, {}, vamos procurar no backup".format(xml_file.get("orderid"), nota.get("numero_nota"), xml_file.get("posid")))
                                 for file_databases in not_order_picture():
@@ -117,11 +115,6 @@ def main():
 not_bin, note_number = main()
 main_fix()
 try:
-    if not_bin in (-1, "Identificado_xml"):
-        execution = FixingCstatCupons()
-        execution.process_resign()
-        execution.process_unused_orders()
-
     if not_bin is None:
         logging.info("Não identificado xml para a venda, vamos procurar no order's.")
         for note in note_number:
