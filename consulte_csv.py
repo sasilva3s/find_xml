@@ -63,7 +63,7 @@ def file_valor_sentto(file_csv):
 
 
 
-def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
+def time_direction(venda, order_id, file_connect, nota, posid, fiscal_banco):
     void_time = None
     paid_time = None
     state_id_paid = None
@@ -88,7 +88,7 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
         #diferenca = paid_time - void_time
         minutos = abs((paid_time - void_time).total_seconds() / 60)
         if minutos >= 30:
-            logging.info(
+            logging.debug(
                 "Cancelada após 30: Order:{}, Nota:{}, Dia:{}, Tempo:{}, Pos:{}".format(order_id, nota, date,
                                                                                                   minutos, type_posid,                                                                                                  ))
             updater_OXAP_5832(file_connect, order_id, nota, date, minutos, type_posid)
@@ -99,6 +99,8 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
     if state_id_paid and state_id_void is None:
         time.sleep(7)
         sale_custom = orders_customproperties(file_connect, order_id)
+        order_disabled = False
+        xml_fiscal_disabled = None
         for sale in sale_custom:
             if sale.get("key") == "FISCAL_XML":
                 base = sale.get("value")
@@ -106,25 +108,45 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal):
                 status = decoder.decode()
                 if status in ("100", "150"):
                     logging.info("Validar cstat no fiscal_persistcomp".format(order_id, status))
-                    xml_request = validate_status(fiscal, order_id)
+                    xml_request = validate_status(fiscal_banco, order_id)
                     decoder_xml = DecodeBase64(xml_request[0])
                     status_xml = decoder_xml.decode()
                     if status != status_xml:
-                        logging.info("Order:{}, Nota:{}, Cstat: {} | Fiscal Status_xml:{} Atualizando informações no fiscal".format(order_id, nota, status, status_xml))
-                        update_xml_APED23848(fiscal, base, order_id, 1)
+                        logging.info(
+                            "Order:{}, Nota:{}, Cstat: {} | Fiscal Status_xml:{} Atualizando informações no fiscal".format(
+                                order_id, nota, status, status_xml))
+                        update_xml_APED23848(fiscal_banco, base, order_id, 1)
                         return 5
                     else:
                         logging.info("Venda possui o mesmo status entre fiscal/order {}, {}".format(order_id, nota))
                         return 5
-
                 if status == "Problemas de conexao com a SEFAZ":
-                    update_xml_APED23848(fiscal, base, order_id, -1)
-                    logging.info("Erro 539 - APED-23848 Orderid:{}, Nota:{}".format(order_id, nota))
+                    logging.info("Nota em contigencia , vamos alterar o status no banco {}, {}".format(order_id, nota))
+                    update_xml_APED23848(fiscal_banco, base, order_id, 0, nota)
                     return
-                else:
-                    logging.info("Order:{}, Nota:{}, Cstat: {}".format(order_id, nota, status))
-                    update_xml_APED23848(fiscal, base, order_id, 0)
-                    return
+        for sale_cancel in sale_custom:
+            if sale_cancel.get("key") == "ORDER_DISABLED":
+                if sale_cancel.get("value") == "true":
+                    order_disabled = True
+            if sale_cancel.get("key") == "DISABLED_FISCAL_XML":
+                xml_fiscal_disabled = sale_cancel.get("value")
+        if order_disabled and xml_fiscal_disabled is not None:
+            xml_encoded = base64.b64decode(xml_fiscal_disabled)
+            ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
+            root = ET.fromstring(xml_encoded)
+            cstat = root.find(".//nfe:cStat", ns)
+            if cstat.text == '206':
+                logging.info("Inutizada incorretamente {} APED-23983 nota:{}".format(order_id, nota))
+                fiscal = seq_fiscal(fiscal_banco)
+                seq = fiscal[0]["fiscal_id"]
+                seq += 1
+                seq_update(fiscal_banco, seq)
+                update_fiscal_order(file_connect, order_id, seq)
+                update_xml_APED23848(fiscal_banco, xml_fiscal_disabled, order_id, 555, seq)
+                return
+            else:
+                logging.info("Não identificado inutilização".format(order_id, nota))
+
 
     if state_id_void and state_id_paid is None:
         sale_custom = orders_customproperties(file_connect, order_id)

@@ -7,7 +7,7 @@ import time
 import base64
 import xml.etree.ElementTree as ET
 
-def connect_fiscal_wrapper(caminho, orderid):
+def seq_update(caminho, seq_id):
     """
     Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
 
@@ -16,13 +16,13 @@ def connect_fiscal_wrapper(caminho, orderid):
     """
     with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
         fiscal_cursor = fiscal_connect.cursor()
-        fiscal_cursor.execute("""update fiscaldata set senttonfce = 0, senttobkoffice = 0 where orderid = {}""".format(orderid))
-        logging.info("Update 'senttonfce' gerado para o orderid -> {}".format(orderid))
+        fiscal_cursor.execute("""update sequencer set seqno = {} where seqnm = 'FiscalId'""".format(seq_id))
+        logging.info("Alterado sequencia")
         fiscal_connect.commit()
 
 
 
-def update_xml_APED23848(caminho, xmlrequest, orderid, status_senttonfce):
+def update_xml_APED23848(caminho, xmlrequest, orderid, status_senttonfce, nota):
     """
     Função responsável por se conectar ao banco "fiscal_persistcomp.db" atualizar o status da coluna "senttonfce" para "0"
 
@@ -32,12 +32,13 @@ def update_xml_APED23848(caminho, xmlrequest, orderid, status_senttonfce):
     with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
         if status_senttonfce != 1:
             fiscal_cursor = fiscal_connect.cursor()
-            fiscal_cursor.execute("""update fiscaldata set senttonfce = {} where orderid = {}""".format(status_senttonfce, orderid))
+            fiscal_cursor.execute("""update fiscaldata set senttonfce = {}, numeronota = {} where orderid = {}""".format(status_senttonfce, nota , orderid))
             fiscal_connect.commit()
         else:
-            fiscal_cursor = fiscal_connect.cursor()
-            fiscal_cursor.execute("""update fiscaldata set senttonfce = {}, xmlrequest = '{}' where orderid = {}""".format(status_senttonfce, xmlrequest, orderid))
-            fiscal_connect.commit()
+            if status_senttonfce != 555:
+                fiscal_cursor = fiscal_connect.cursor()
+                fiscal_cursor.execute("""update fiscaldata set senttonfce = {}, xmlrequest = '{}' where orderid = {}""".format(status_senttonfce, xmlrequest, orderid))
+                fiscal_connect.commit()
 
 
 
@@ -65,9 +66,9 @@ def insert_fiscal_faltante(caminho, posid, OrderId, XMLRequest, NumeroNota, Data
         except sqlite3.InternalError:
             pass
 
-def connect_order_state(caminho, orderid):
+def connect_order_state(path_order, orderid):
     db_orders = []
-    with sqlite3.connect("{}".format(caminho)) as orders_id:
+    with sqlite3.connect("{}".format(path_order)) as orders_id:
         orders = orders_id.cursor()
         res = orders.execute("""select orderid, stateid, Timestamp from orderstatehistory where orderid = {}""".format(orderid))
         for coluna in res:
@@ -77,6 +78,25 @@ def connect_order_state(caminho, orderid):
                            }
             db_orders.append(values_dict)
     return db_orders
+
+def seq_fiscal(caminho):
+    fiscal = []
+    with sqlite3.connect("{}".format(caminho)) as orders_id:
+        orders = orders_id.cursor()
+        res = orders.execute("""select seqno from sequencer where seqnm = 'FiscalId'""")
+        for coluna in res:
+            values_dict = {"fiscal_id": coluna[0],
+                           }
+            fiscal.append(values_dict)
+    return fiscal
+
+def update_fiscal_order(caminho, orderid, seq_nova):
+    with sqlite3.connect("{}".format(caminho)) as orders_id:
+        orders = orders_id.cursor()
+        orders.execute("""update ordercustomproperties set value = {} where orderid = {} and key = 'FISCAL_ID'""".format(seq_nova, orderid))
+        orders_id.commit()
+
+
 
 def consulte_orderid(caminho, orderid):
     db_orders = []
@@ -216,10 +236,11 @@ def insert_db(file_antigo, file_novo, orderid):
 
 
 
-def find_fiscal_id(note_found):
-    file_orders = r"C:\edeployPOS\data\server\databases"
+def find_fiscal_id(path_order, note_found):
+    file_orders = r"{}".format(path_order)
     os.chdir(r"{}".format(file_orders))
     os.chdir(".")
+    saleline = []
     for db_file in glob.glob("order.db*"):
         if len(db_file) > 10:
             continue
@@ -230,8 +251,14 @@ def find_fiscal_id(note_found):
             if res:
                 for coluna in res:
                     logging.info("Fiscal Number {}, identificado no {}, orderid {}".format(coluna[2], file_data, coluna[0]))
-                    orders.execute("""update OrderCustomProperties set Value = 1 WHERE orderid = {} and key = 'REMOTE_ORDER_STATUS'; """.format(coluna[0]))
-                    connect_id.commit()
+                    sale_order = {
+                        "orderid": coluna[0],
+                        "nota": coluna[2],
+                        "path_order": file_data,
+                    }
+                    saleline.append(sale_order)
+    return saleline
+
 
 def validate_status(path_fiscal, orderid):
     xml_request = []
