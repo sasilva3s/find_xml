@@ -42,29 +42,43 @@ def update_xml_APED23848(caminho, xmlrequest, orderid, status_senttonfce, nota):
 
 
 
-
-def insert_fiscal_faltante(caminho, posid, OrderId, XMLRequest, NumeroNota, DataNota):
-    with sqlite3.connect("{}".format(caminho)) as fiscal_connect:
-        fiscal_cursor = fiscal_connect.cursor()
-        try:
-            fiscal_cursor.execute("""INSERT INTO FiscalData("PosId", "OrderId", "XMLRequest", "NumeroNota", "NumeroSat", 
-            "NextDateToSend", "SentToNfce", "NextDateToSendToBKC", 
-            "OrderPicture", "DataNota", "XMLResponse")
-                               VALUES('{}', '{}', '{}', '{}', '00', NULL, '0', NULL, '1', '{}', NULL)
-                               """.format(posid, OrderId, XMLRequest, NumeroNota, DataNota))
-            logging.info("Inserido venda orderid -- {} , fiscal_persistcomp".format(OrderId))
-            fiscal_connect.commit()
-        except sqlite3.OperationalError:
-            time.sleep(5)
-            fiscal_cursor.execute("""INSERT INTO FiscalData("PosId", "OrderId", "XMLRequest", "NumeroNota", "NumeroSat", 
-                        "NextDateToSend", "SentToNfce", "NextDateToSendToBKC", 
-                        "OrderPicture", "DataNota", "XMLResponse")
-                                           VALUES('{}', '{}', '{}', '{}', '00', NULL, '0', NULL, '1', '{}', NULL)
-                                           """.format(posid, OrderId, XMLRequest, NumeroNota, DataNota))
-            logging.info("Inserido venda orderid -- {} , fiscal_persistcomp".format(OrderId))
-            fiscal_connect.commit()
-        except sqlite3.InternalError:
-            pass
+class FiscalData:
+    def __init__(self, caminho, posid, OrderId, XMLRequest, NumeroNota, order_picture, DataNota):
+        self.caminho = caminho
+        self.OrderId = OrderId
+        self.XMLRequest = XMLRequest
+        self.NumeroNota = NumeroNota
+        self.DataNota = DataNota
+        self.posid = posid
+        self.order_picture = order_picture
+    def insert_fiscal_faltante(self):
+        with sqlite3.connect("{}".format(self.caminho)) as fiscal_connect:
+            fiscal_cursor = fiscal_connect.cursor()
+            try:
+                fiscal_cursor.execute("""INSERT INTO FiscalData("PosId", "OrderId", "XMLRequest", "NumeroNota", "NumeroSat", "NextDateToSend", "SentToNfce", "NextDateToSendToBKC", "OrderPicture", "DataNota", "XMLResponse", "InvoiceType")
+                                   VALUES('{}', '{}', '{}', '{}', '00', NULL, '0', NULL, '{}', '{}', NULL, 'NFCE')
+                                   """.format(self.posid, self.OrderId, self.XMLRequest, self.NumeroNota, self.order_picture, self.DataNota))
+                logging.info("Inserido venda orderid -- {} , fiscal_persistcomp".format(self.OrderId))
+                fiscal_connect.commit()
+            except sqlite3.OperationalError:
+                time.sleep(5)
+                fiscal_cursor.execute("""INSERT INTO FiscalData("PosId", "OrderId", "XMLRequest", "NumeroNota", "NumeroSat", "NextDateToSend", "SentToNfce", "NextDateToSendToBKC", "OrderPicture", "DataNota", "XMLResponse", "InvoiceType")
+                                                   VALUES('{}', '{}', '{}', '{}', '00', NULL, '0', NULL, '{}', '{}', NULL, 'NFCE')
+                                                   """.format(self.posid, self.OrderId, self.XMLRequest,
+                                                              self.NumeroNota, self.order_picture, self.DataNota))
+                logging.info("Inserido venda orderid -- {} , fiscal_persistcomp".format(self.OrderId))
+                fiscal_connect.commit()
+            except sqlite3.InternalError:
+                pass
+    def sales_inquiry(self):
+        with sqlite3.connect("{}".format(self.caminho)) as fiscal_connect:
+            fiscal_cursor = fiscal_connect.cursor()
+            fiscal_cursor.execute("""SELECT * FROM FiscalData WHERE OrderId = {}""".format(self.OrderId))
+            res = fiscal_cursor.fetchall()
+            if res:
+                return res[0]
+            else:
+                return None
 
 def connect_order_state(path_order, orderid):
     db_orders = []
@@ -150,7 +164,7 @@ def updater_aped_20805(file_connect, order_id, nota):
     for sale in sale_custom:
         if sale.get("key") == "FISCAL_XML":
             xml_request = sale.get("value")
-        if sale.get("key") == "CANCELED_FISCAL_XML":
+        if sale.get("key") == "CANCELED_FISCAL_XML" if sale.get("key") == "CANCELED_FISCAL_XML" else sale.get("key") == "DISABLED_FISCAL_XML":
             xml_canceled = sale.get("value")
     if xml_request is not None and xml_canceled is not None:
         xml_encoded = base64.b64decode(xml_canceled)
@@ -158,18 +172,12 @@ def updater_aped_20805(file_connect, order_id, nota):
         root = ET.fromstring(xml_encoded)
         cstat = root.find(".//nfe:cStat", ns)
         if cstat.text in ('135', '102'):
-            logging.info("Order {} foi cancelada antes de 30 ---> , com cstat {}".format(order_id, cstat.text, nota))
+            logging.info("Order {} foi cancelada com cstat {}".format(order_id, cstat.text, nota))
         else:
             logging.info(
-                    "Não identificado status de inutilização {}".format(cstat.text))
+                    "Não identificado status de inutilização {}, {}, {} - ".format(cstat.text, order_id, nota))
     else:
         logging.info("Necessario analisar / não existe tratamento - Orderid = {}, Nota {}".format(order_id, nota))
-
-
-
-
-
-
 
 def updater_OXAP_5832(file_connect, order_id, nota, date, minutos, type_posid):
     sale_custom_ = orders_customproperties(file_connect, order_id)
@@ -203,8 +211,8 @@ def update_status_remote(file_connect, order):
         res = orders.execute("""update OrderCustomProperties set Value = 1 WHERE orderid = {} and key = 'REMOTE_ORDER_STATUS'; """.format(order))
         res.close()
 
-def not_order_picture():
-    file_main_backup = r"C:\edeployPOS\data\server\backups_maintenance\databases"
+def not_order_picture(file_backup):
+    file_main_backup = r"{}".format(file_backup)
     os.chdir(r"{}".format(file_main_backup))
     os.chdir(".")
     file_data = []
@@ -250,7 +258,6 @@ def find_fiscal_id(path_order, note_found):
             res = orders.execute("""select orderid, key, value from OrderCustomProperties where key = 'FISCAL_ID' and value = {}""".format(note_found))
             if res:
                 for coluna in res:
-                    logging.info("Fiscal Number {}, identificado no {}, orderid {}".format(coluna[2], file_data, coluna[0]))
                     sale_order = {
                         "orderid": coluna[0],
                         "nota": coluna[2],

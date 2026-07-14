@@ -30,20 +30,17 @@ elif caminho_databases == "C:\edeployPOS":
     file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databases)
     localizar_xml = r"{}\bin".format(caminho_databases)
     path_orders = r"{}\data\server\databases".format(caminho_databases)
+    path_orders_backup = r"{}\data\server\backups_maintenance\databases".format(caminho_databases)
     Erro = ["\Erros", r"\Enviados\2026\06"]
     acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databases)
-    # local_fix = "fix_venda/"
-    # local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
 elif caminho_databases == "C:\edeploy-pos-structure":
     acesso_fiscal = r"""{}\data\server\databases\fiscal_persistcomp.db""".format(caminho_databases)
     file_store = r"""{}\data\server\bundles\storecfg\loader.cfg""".format(caminho_databases)
     path_orders = r"{}\data\server\databases".format(caminho_databases)
+    path_orders_backup = r"{}\data\server\backups_maintenance\databases".format(caminho_databases)
     localizar_xml = r"{}\bin".format(caminho_databases)
     Erro = ["\Erros", r"\Enviados\2026\06"]
     acesso_orders_tbl = r"""{}\data\server\databases\tblservice.db""".format(caminho_databases)
-    # local_fix = "fix_venda/"
-    # local_fix_data = "{}/data/server/bundles/bkofficeuploader/python/repository".format(caminho_databeses)
-
 
 
 def main():
@@ -72,16 +69,16 @@ def main():
                     logging.debug(order_statr)
                     if order_statr == 5:
                         StandAlone(xml_file.get("orderid"))
-            else:
-                logging.info("Vendas não identificadas no order {}, {}, {}, vamos procurar no backup".format(xml_file.get("orderid"), xml_file.get("invoceid"), xml_file.get("posid")))
-                for file_databases in not_order_picture():
-                    consult_order = connect_order_state(file_databases, xml_file.get("orderid"))
-                    if consult_order:
-                        order_state = time_direction(consult_order, xml_file.get("orderid"), xml_file.get("path_order"), xml_file.get("invoceid"), posid.group(1), acesso_fiscal)
-                        if order_state == 5:
-                            insert_db(file_databases, xml_file.get("path_order"), xml_file.get("orderid"))
-                            logging.info("Inserido vendas no banco atual {}, {}, {}".format(xml_file.get("orderid"), xml_file.get("invoceid"), xml_file.get("posid")))
-                            StandAlone(xml_file.get("orderid"))
+            # else:
+            #     logging.info("Vendas não identificadas no order {}, {}, {}, vamos procurar no backup".format(xml_file.get("orderid"), xml_file.get("invoceid"), xml_file.get("posid")))
+            #     for file_databases in not_order_picture():
+            #         consult_order = connect_order_state(file_databases, xml_file.get("orderid"))
+            #         if consult_order:
+            #             order_state = time_direction(consult_order, xml_file.get("orderid"), xml_file.get("path_order"), xml_file.get("invoceid"), posid.group(1), acesso_fiscal)
+            #             if order_state == 5:
+            #                 insert_db(file_databases, xml_file.get("path_order"), xml_file.get("orderid"))
+            #                 logging.info("Inserido vendas no banco atual {}, {}, {}".format(xml_file.get("orderid"), xml_file.get("invoceid"), xml_file.get("posid")))
+            #                 #StandAlone(xml_file.get("orderid"))
     except Exception as ex:
         logging.info("Erro {}".format(ex))
 

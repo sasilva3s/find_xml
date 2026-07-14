@@ -12,9 +12,13 @@ class DecodeBase64:
         cstat = root.find(".//nfe:protNFe/nfe:infProt/nfe:cStat", ns)
         if cstat is not None:
             return cstat.text
+        inutilizado_cstat = root.find(".//nfe:cStat", ns)
+        if inutilizado_cstat is not None:
+            return inutilizado_cstat.text
         else:
             cstat = root.find(".//nfe:infNFe/nfe:ide/nfe:xJust", ns)
             return cstat.text
 
 
-
+    def encode(self):
+        return base64.b64encode(self.xml_file)
