@@ -129,7 +129,7 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal_banco):
                     else:
                         logging.info("Venda possui o mesmo status entre fiscal/order {}, {}".format(order_id, nota))
                         return 5
-                if status == "Problemas de conexao com a SEFAZ":
+                if status in ("Problemas de conexao com a SEFAZ", "Notas anteriores em contingencia"):
                     sale_order_picture = 1 #rder_picture.encode()
                     date_time = order.get("Timestamp").replace("T", " ")
                     date_fiscal = datetime_to_float(date_time)
