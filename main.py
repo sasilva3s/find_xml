@@ -67,8 +67,8 @@ def main():
                 if consult_order:
                     order_statr = time_direction(consult_order, xml_file.get("orderid"), xml_file.get("path_order"), xml_file.get("invoceid"), posid.group(1), acesso_fiscal)
                     logging.debug(order_statr)
-                    if order_statr == 5:
-                        StandAlone(xml_file.get("orderid"))
+                    #if order_statr == 5:
+                        #StandAlone(xml_file.get("orderid"))
             # else:
             #     logging.info("Vendas não identificadas no order {}, {}, {}, vamos procurar no backup".format(xml_file.get("orderid"), xml_file.get("invoceid"), xml_file.get("posid")))
             #     for file_databases in not_order_picture():

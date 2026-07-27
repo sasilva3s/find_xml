@@ -97,7 +97,7 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal_banco):
             logging.info(
                 "Cancelada após 30: Order:{}, Nota:{}, Dia:{}, Tempo:{}, Pos:{}".format(order_id, nota, date,
                                                                                                   minutos, type_posid,                                                                                                  ))
-            updater_aped_20805(file_connect, order_id, nota)
+            updater_aped_20805(file_connect, order_id, nota, "cancelada")
             return
         else:
             updater_aped_20805(file_connect, order_id, nota)
