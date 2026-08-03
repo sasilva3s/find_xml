@@ -13,8 +13,22 @@ APP_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
 
 def bootstrap_runtime_dependencies() -> None:
 
-    sys.path.insert(0, os.path.join(APP_ROOT, "bin", "common3.pypkg"))
+    bin_path = os.path.join(APP_ROOT, "bin")
+    hv_data_dir = os.path.join(APP_ROOT, "data", "server")
+    bundle_dir = os.path.join(hv_data_dir, "bundles", "auditlogger")
+
+    os.environ.setdefault("BINPATH", bin_path)
+    os.environ.setdefault("HVDATADIR", hv_data_dir)
+    os.environ.setdefault("BUNDLEDIR", bundle_dir)
+    os.environ.setdefault("HVCOMPNAME", "AuditLogger")
+    os.environ.setdefault("HVPORT", "14000")
+    os.environ.setdefault("HVIP", "127.0.0.1")
+    os.environ.setdefault("HVCOMPPORT", "35689")
+    os.environ.setdefault("HVPID", "-1")
+
+    sys.path.insert(0, os.path.join(bin_path, "common3.pypkg"))
     sys.path.insert(0, os.path.join(SCRIPT_DIR, "..", "lib"))
+    os.chdir(os.environ["BINPATH"])
 
     global MbContextMessageBus, MBEasyContext, OrderService, Config, LogEntry, LogRepository
     from mbcontextmessagehandler import MbContextMessageBus
@@ -133,8 +147,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
 
-    bootstrap_runtime_dependencies()
     args = parse_args()
+    audit_output_folder = os.path.abspath(args.audit_output_folder)
+
+    bootstrap_runtime_dependencies()
 
     mb_context = MBEasyContext("backfill_missing_order")
     message_bus = MbContextMessageBus(mb_context)
@@ -145,7 +161,7 @@ def main() -> None:
         report_missing_order_ids(requested_order_ids=args.order_ids, found_orders=order_pictures)
 
         config = Config()
-        config.output_folder = args.audit_output_folder
+        config.output_folder = audit_output_folder
         config.connection_timeout = 30
         log_repository = LogRepository(output_path=config.output_folder, config=config)
 

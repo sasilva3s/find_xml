@@ -163,13 +163,14 @@ def updater_aped_20805(file_connect, order_id, nota, status_order = None):
     order_disabled = None
     sale_custom = orders_customproperties(file_connect, order_id)
     for sale in sale_custom:
+        if sale.get("key") == "ORDER_DISABLED":
+            order_disabled = sale.get("value")
+            if str(order_disabled).lower() == "false":
+                order_disabled = False
         if sale.get("key") == "FISCAL_XML":
             xml_request = sale.get("value")
         if sale.get("key") == "CANCELED_FISCAL_XML" if sale.get("key") == "CANCELED_FISCAL_XML" else sale.get("key") == "DISABLED_FISCAL_XML":
             xml_canceled = sale.get("value")
-        if sale.get("key") == "ORDER_DISABLED":
-            order_disabled == sale.get("value")
-            logging.info("Order {} foi desabilitado".format(order_id))
     if xml_request is not None and xml_canceled is not None:
         xml_encoded = base64.b64decode(xml_canceled)
         ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
@@ -180,7 +181,7 @@ def updater_aped_20805(file_connect, order_id, nota, status_order = None):
         else:
             logging.info(
                     "Não identificado status de inutilização {}, {}, {} - ".format(cstat.text, order_id, nota))
-    elif order_disabled == "false" and status_order == "CANCELLED":
+    elif order_disabled == False and status_order == "cancelada":
         return
     else:
         logging.info("Necessario analisar / não existe tratamento - Orderid = {}, Nota {}".format(order_id, nota))

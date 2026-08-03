@@ -6,6 +6,7 @@ import base64
 import glob
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from threading import Thread, Condition, Lock
@@ -48,6 +49,7 @@ NFE_PROC_POS = "{0}_{1}_{2}_nfe_proc_pos{3}_{4}.xml"
 NFCE_WT_RESP = "<nfeProc versao=\"{0:.2f}\" xmlns=\"{1}\">{2}<protNFe versao=\"{0:.2f}\">{3}</protNFe></nfeProc>"
 
 CSTAT_539_DUP_DIFF_KEY = -6
+CHAVE_XMOTIVO_539_PATTERN = re.compile(r"\[chNFe:\s*(\d{44})\]")
 
 loggerThread = logging.getLogger("FiscalWrapperThread")
 logger = logging.getLogger("FiscalWrapper")
@@ -2224,14 +2226,27 @@ class NfceContingencia:
         loggerThread.info("Tratando 539 da order %s. xMotivo SEFAZ: %s" % (order_id_padded, motivo))
 
         try:
+            chave_match = CHAVE_XMOTIVO_539_PATTERN.search(motivo)
+            if chave_match is None:
+                loggerThread.warning(
+                    "539 da order %s: xMotivo SEFAZ sem chNFe reconhecivel (%s). "
+                    "Marcando como excecao terminal para intervencao manual." % (order_id_padded, motivo)
+                )
+                fiscalrepository.set_nfce_sent(order.order_id, CSTAT_539_DUP_DIFF_KEY)
+                return
+
+            authoritative_key = chave_match.group(1)
+            loggerThread.info(
+                "Consultando SEFAZ com a chave apontada pelo SEFAZ %s para order %s" % (
+                    authoritative_key,
+                    order_id_padded,
+                )
+            )
+
             order_picture_xml = self._parse_order_picture(order.order_picture)
             request_str = self._replace_contingency_nfe(
                 request_str=order.xml,
                 order_xml=order_picture_xml,
-            )
-            rebuilt_key = remove_xml_namespace(request_str).find(INF_NFE).attrib["Id"][3:]
-            loggerThread.info(
-                "Consultando SEFAZ com chave reconstruida %s para order %s" % (rebuilt_key, order_id_padded)
             )
 
             self.nfce_situation_checker.logger = loggerThread
@@ -2239,7 +2254,7 @@ class NfceContingencia:
             for _ in range(3):
                 time.sleep(5)
                 fiscal_data = self.nfce_situation_checker.check_situation_nfe(
-                    nfe=rebuilt_key,
+                    nfe=authoritative_key,
                     timeout=5,
                 )
                 if fiscal_data:
@@ -2247,9 +2262,9 @@ class NfceContingencia:
 
             if not fiscal_data:
                 loggerThread.warning(
-                    "539 da order %s sem resposta da SEFAZ para a chave reconstruida %s. Sera retentado." % (
+                    "539 da order %s sem resposta da SEFAZ para a chave %s. Sera retentado." % (
                         order_id_padded,
-                        rebuilt_key,
+                        authoritative_key,
                     )
                 )
                 fiscalrepository.set_nfce_sent(order.order_id, -1)
@@ -2259,7 +2274,7 @@ class NfceContingencia:
             c_stat_node = fiscal_data_xml.find(".//retConsSitNFe/cStat")
             c_stat = c_stat_node.text if c_stat_node is not None else None
             loggerThread.info(
-                "Order %s: chave reconstruida %s retornou cStat %s" % (order_id_padded, rebuilt_key, c_stat)
+                "Order %s: chave %s retornou cStat %s" % (order_id_padded, authoritative_key, c_stat)
             )
 
             if c_stat not in ("100", "150"):
@@ -2281,6 +2296,7 @@ class NfceContingencia:
 
             inf_prot.attrib.pop("Id", None)
             order.xml = request_str[request_str.index("<NFe"):request_str.index("</NFe>") + 6]
+            rebuilt_key = remove_xml_namespace(request_str).find(INF_NFE).attrib["Id"][3:]
             self._finalize_authorized_nfce(
                 fiscal_repository=fiscalrepository,
                 order=order,
@@ -2292,7 +2308,13 @@ class NfceContingencia:
                 order_id=order_id_padded,
                 nfe_key=rebuilt_key,
             )
-            loggerThread.info("Order %s resolvida com chave reconstruida %s" % (order_id_padded, rebuilt_key))
+            loggerThread.info(
+                "Order %s resolvida com a chave apontada pelo SEFAZ %s (registro local: %s)" % (
+                    order_id_padded,
+                    authoritative_key,
+                    rebuilt_key,
+                )
+            )
 
         except Exception:
             loggerThread.exception(

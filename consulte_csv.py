@@ -198,9 +198,7 @@ def time_direction(venda, order_id, file_connect, nota, posid, fiscal_banco):
             no_ident_status = updated.get("status_order")
             type_venda = updated.get("ordersubtype")
             if no_ident_status == 2:
-                #restart_compont = no_ident_status
-                #update_status_remote(file_connect, order_id)
-                logging.info("Venda com o status {}, {}, {} : APED-19705 - Aplicado fix".format(no_ident_status, order_id, type_venda))
+                logging.info("Venda com o status {}, {}, {} ".format(no_ident_status, order_id, type_venda))
             elif no_ident_status == 6:
                 break
     else:

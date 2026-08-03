@@ -21,15 +21,23 @@ def execute(version, action):
         for component in os.listdir(update_dir):
             copy_update_file(os.path.join(update_dir, component), component)
             restart_component(component)
-        #logging.info("restart_component")
+            return
 
     elif version == "CORE:5.2.3|SRC:26.02.11":
         update_dir = os.path.join(BASE_UPDATE_FILE, "repository\\26.02.11\\{}".format(action))
         for component in os.listdir(update_dir):
             copy_update_file(os.path.join(update_dir, component), component)
             component_res = component
-        if component_res is not None:
             restart_component(component_res)
+            return
+
+    elif version == "CORE:5.2.6|SRC:26.05.06":
+        update_dir = os.path.join(BASE_UPDATE_FILE, "repository\\26.05.06\\{}".format(action))
+        for component in os.listdir(update_dir):
+            copy_update_file(os.path.join(update_dir, component), component)
+            component_res = component
+            restart_component(component_res)
+            return
     else:
         raise ValueError("Version already has the fix : {}, abort".format(version))
 
