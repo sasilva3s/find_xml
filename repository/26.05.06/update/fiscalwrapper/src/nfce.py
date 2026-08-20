@@ -2230,11 +2230,18 @@ class NfceContingencia:
                 order_xml=order_picture_xml,
             )
             chave_prefix = "[chNFe:"
-            chave_index = motivo.index(chave_prefix)
-            rebuilt_key = motivo[chave_index + len(chave_prefix):].lstrip()[:44]
-            loggerThread.info(
-                "Consultando SEFAZ com chave informada pela SEFAZ %s para order %s" % (rebuilt_key, order_id_padded)
-            )
+            if chave_prefix in motivo:
+                chave_index = motivo.index(chave_prefix)
+                rebuilt_key = motivo[chave_index + len(chave_prefix):].lstrip()[:44]
+                loggerThread.info(
+                    "Consultando SEFAZ com chave informada pela SEFAZ %s para order %s" % (rebuilt_key, order_id_padded)
+                )
+            else:
+                rebuilt_key = remove_xml_namespace(request_str).find(INF_NFE).attrib["Id"][3:]
+                loggerThread.info(
+                    "xMotivo sem chave no formato esperado. Consultando SEFAZ com chave reconstruida "
+                    "%s para order %s" % (rebuilt_key, order_id_padded)
+                )
 
             self.nfce_situation_checker.logger = loggerThread
             fiscal_data = None
