@@ -6,6 +6,7 @@ import base64
 import glob
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from threading import Thread, Condition, Lock
@@ -2229,10 +2230,9 @@ class NfceContingencia:
                 request_str=order.xml,
                 order_xml=order_picture_xml,
             )
-            chave_prefix = "[chNFe:"
-            if chave_prefix in motivo:
-                chave_index = motivo.index(chave_prefix)
-                rebuilt_key = motivo[chave_index + len(chave_prefix):].lstrip()[:44]
+            chave_match = re.search(r"[0-9]{44}", motivo)
+            if chave_match:
+                rebuilt_key = chave_match.group(0)
                 loggerThread.info(
                     "Consultando SEFAZ com chave informada pela SEFAZ %s para order %s" % (rebuilt_key, order_id_padded)
                 )
