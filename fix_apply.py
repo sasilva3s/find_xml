@@ -38,6 +38,13 @@ def execute(version, action):
             component_res = component
             restart_component(component_res)
             return
+    elif version == "CORE:5.3.0|SRC:26.05.12":
+        update_dir = os.path.join(BASE_UPDATE_FILE, "repository\\26.05.12\\{}".format(action))
+        for component in os.listdir(update_dir):
+            copy_update_file(os.path.join(update_dir, component), component)
+            component_res = component
+            restart_component(component_res)
+            return
     else:
         raise ValueError("Version already has the fix : {}, abort".format(version))
 
