@@ -259,18 +259,21 @@ def find_fiscal_id(path_order, note_found):
     for db_file in glob.glob("order.db*"):
         if len(db_file) > 10:
             continue
-        file_data = file_orders + "\{}".format(db_file)
-        with sqlite3.connect("{}".format(file_data)) as connect_id:
-            orders = connect_id.cursor()
-            res = orders.execute("""select orderid, key, value from OrderCustomProperties where key = 'FISCAL_ID' and value = {}""".format(note_found))
-            if res:
-                for coluna in res:
-                    sale_order = {
-                        "orderid": coluna[0],
-                        "nota": coluna[2],
-                        "path_order": file_data,
-                    }
-                    saleline.append(sale_order)
+        try:
+            file_data = file_orders + "\{}".format(db_file)
+            with sqlite3.connect("{}".format(file_data)) as connect_id:
+                orders = connect_id.cursor()
+                res = orders.execute("""select orderid, key, value from OrderCustomProperties where key = 'FISCAL_ID' and value = {}""".format(note_found))
+                if res:
+                    for coluna in res:
+                        sale_order = {
+                            "orderid": coluna[0],
+                            "nota": coluna[2],
+                            "path_order": file_data,
+                        }
+                        saleline.append(sale_order)
+        except sqlite3.OperationalError:
+            pass
     return saleline
 
 
